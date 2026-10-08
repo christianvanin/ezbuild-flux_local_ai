@@ -36,7 +36,7 @@ jobs:
       - name: Resolve Xcode scheme
         id: scheme
         run: |
-          SCHEME=$(ls ios/*.xcworkspace | head -1 | xargs basename | sed 's/.xcworkspace//')
+          SCHEME=$(ls -d ios/*.xcworkspace | head -1 | xargs basename | sed 's/\.xcworkspace//')
           echo "name=$SCHEME" >> "$GITHUB_OUTPUT"
           echo "Using scheme: $SCHEME"
 
