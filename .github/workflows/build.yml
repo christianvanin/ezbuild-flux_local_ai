@@ -36,10 +36,7 @@ jobs:
       - name: Resolve Xcode scheme
         id: scheme
         run: |
-          SCHEME=$(xcodebuild -list -workspace ios/*.xcworkspace -json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['workspace']['schemes'][0])" 2>/dev/null || echo "")
-          if [ -z "$SCHEME" ]; then
-            SCHEME=$(ls ios/*.xcworkspace | head -1 | xargs basename | sed 's/.xcworkspace//')
-          fi
+          SCHEME=$(ls ios/*.xcworkspace | head -1 | xargs basename | sed 's/.xcworkspace//')
           echo "name=$SCHEME" >> "$GITHUB_OUTPUT"
           echo "Using scheme: $SCHEME"
 
