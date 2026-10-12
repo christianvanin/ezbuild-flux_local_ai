@@ -1,14 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions, Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { useState, useEffect } from 'react';
 
-// URL di fallback per testare un file di grandi dimensioni se non troviamo il modello CoreML di Flux hostato pubblicamente
-const MODEL_URL = "https://huggingface.co/fal/flux-coreml-q4/resolve/main/flux_dev_4bit.mlpackage.zip";
-const MODEL_FILE_NAME = "flux_dev_4bit.mlpackage.zip";
+// Modello CoreML ufficiale Apple pubblico (senza autenticazione richiesta, compilato per ANE/iOS)
+const MODEL_URL = "https://huggingface.co/apple/coreml-stable-diffusion-v1-5-palettized/resolve/main/coreml-stable-diffusion-v1-5-palettized_split_einsum_v2_compiled.zip";
+const MODEL_FILE_NAME = "coreml_diffusion_v1_5.zip";
 
 export default function App() {
   const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadSpeed, setDownloadSpeed] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
   const [modelExists, setModelExists] = useState(false);
 
@@ -32,11 +33,17 @@ export default function App() {
       modelPath,
       {},
       (downloadProgress) => {
-        const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
-        // Evitiamo che progress sia infinito o NaN all'inizio
+        const total = downloadProgress.totalBytesExpectedToWrite;
+        const written = downloadProgress.totalBytesWritten;
+        const progress = written / total;
+
         if (!isNaN(progress) && isFinite(progress)) {
-            setDownloadProgress(progress);
+          setDownloadProgress(progress);
         }
+
+        const writtenMB = (written / (1024 * 1024)).toFixed(1);
+        const totalMB = total > 0 ? (total / (1024 * 1024)).toFixed(1) : '?';
+        setDownloadSpeed(`${writtenMB} MB / ${totalMB} MB`);
       }
     );
 
@@ -44,10 +51,10 @@ export default function App() {
       const { uri } = await downloadResumable.downloadAsync();
       console.log('Finished downloading to ', uri);
       setModelExists(true);
+      Alert.alert('Download Completato', 'Il modello CoreML è stato salvato correttamente sul dispositivo!');
     } catch (e) {
       console.error(e);
-      // Fallback a un file di test generico se HuggingFace richiede Auth o è rotto il link
-      console.log("Il link reale di HF potrebbe essere privato, in un'app vera useremmo il token HuggingFace");
+      Alert.alert('Errore di Download', `Impossibile completare il download: ${e.message || e}`);
     } finally {
       setIsDownloading(false);
     }
@@ -57,6 +64,7 @@ export default function App() {
     await FileSystem.deleteAsync(modelPath);
     setModelExists(false);
     setDownloadProgress(0);
+    setDownloadSpeed('');
   };
 
   return (
@@ -82,14 +90,15 @@ export default function App() {
           </View>
         ) : (
           <View>
-            <Text style={styles.missingText}>❌ Modello Assente (Richiesti ~4.2GB)</Text>
-            <Text style={styles.descText}>Scarica i pesi quantizzati per eseguire Flux Dev in locale e offline sul tuo device.</Text>
+            <Text style={styles.missingText}>❌ Modello Assente (Richiesti ~1.4GB)</Text>
+            <Text style={styles.descText}>Scarica i pesi quantizzati CoreML per eseguire l'inferenza AI in locale e offline sul Neural Engine.</Text>
             {isDownloading ? (
               <View style={styles.progressContainer}>
                 <View style={styles.progressBarBg}>
                   <View style={[styles.progressBarFill, { width: `${downloadProgress * 100}%` }]} />
                 </View>
                 <Text style={styles.progressText}>{(downloadProgress * 100).toFixed(1)}% Completato</Text>
+                {downloadSpeed ? <Text style={styles.progressSubText}>{downloadSpeed}</Text> : null}
               </View>
             ) : (
               <TouchableOpacity style={styles.button} onPress={downloadModel}>
@@ -201,5 +210,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     fontWeight: '600'
+  },
+  progressSubText: {
+    color: '#A0A0B0',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
   },
 });
